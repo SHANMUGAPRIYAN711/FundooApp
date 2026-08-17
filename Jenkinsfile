@@ -8,6 +8,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "shanmu12/fundoo-backend"
+        IMAGE_TAG  = "latest"
     }
 
     stages {
@@ -18,52 +19,49 @@ pipeline {
             }
         }
 
-        stage('Build Jar') {
+        stage('Build JAR') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
 
-        stage('Docker Build') {
+        stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME}:latest .'
-            }
-        }
-
-        stage('Docker Login') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'docker-hub',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                    '''
-                }
-            }
-        }
-
-        stage('Docker Push') {
-            steps {
-                sh 'docker push ${IMAGE_NAME}:latest'
+                sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
             }
         }
 
         stage('Verify Image') {
             steps {
-                sh 'docker images | grep fundoo-backend'
+                sh 'docker images'
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+
+                    sh '''
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    docker push $IMAGE_NAME:$IMAGE_TAG
+                    docker logout
+                    '''
+                }
             }
         }
     }
 
     post {
         success {
-            echo 'Pipeline completed successfully!'
+            echo 'CI Pipeline Completed Successfully'
         }
 
         failure {
-            echo 'Pipeline failed! Check the console output.'
+            echo 'CI Pipeline Failed'
         }
 
         always {
