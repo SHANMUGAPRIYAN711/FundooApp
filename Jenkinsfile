@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     tools {
-        maven 'Maven 3'
         jdk 'JDK 21'
+        maven 'Maven 3'
     }
 
     environment {
@@ -18,21 +18,21 @@ pipeline {
             }
         }
 
-        stage('Build & Test') {
+        stage('Build Jar') {
             steps {
-                sh '''
-                    pwd
-                    ls -la
-                    mvn clean package -DskipTests
-                '''
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Docker Build') {
             steps {
-                script {
-                    sh "docker build -t ${IMAGE_NAME}:latest ."
-                }
+                sh 'docker build -t ${IMAGE_NAME}:latest .'
+            }
+        }
+
+        stage('Verify Docker Image') {
+            steps {
+                sh 'docker images'
             }
         }
     }
@@ -43,6 +43,9 @@ pipeline {
         }
         failure {
             echo 'Build Failed'
+        }
+        always {
+            cleanWs()
         }
     }
 }
