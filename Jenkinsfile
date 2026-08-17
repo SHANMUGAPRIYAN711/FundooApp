@@ -7,7 +7,7 @@ pipeline {
     }
 
     environment {
-        IMAGE_NAME = "shanmu12/fundoo-backend"
+        IMAGE_NAME = "fundoo-backend"
         IMAGE_TAG  = "latest"
     }
 
@@ -27,7 +27,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
+                sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
             }
         }
 
@@ -44,11 +44,14 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-
                     sh '''
-                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                    docker push $IMAGE_NAME:$IMAGE_TAG
-                    docker logout
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} $DOCKER_USER/${IMAGE_NAME}:${IMAGE_TAG}
+
+                        docker push $DOCKER_USER/${IMAGE_NAME}:${IMAGE_TAG}
+
+                        docker logout
                     '''
                 }
             }
@@ -59,11 +62,9 @@ pipeline {
         success {
             echo 'CI Pipeline Completed Successfully'
         }
-
         failure {
             echo 'CI Pipeline Failed'
         }
-
         always {
             cleanWs()
         }
