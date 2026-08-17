@@ -7,7 +7,7 @@ pipeline {
     }
 
     environment {
-        IMAGE_NAME = "fundoo-backend"
+        IMAGE_NAME = "shanmu12/fundoo-backend"
     }
 
     stages {
@@ -30,20 +30,42 @@ pipeline {
             }
         }
 
-        stage('Verify Docker Image') {
+        stage('Docker Login') {
             steps {
-                sh 'docker images'
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-hub',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    '''
+                }
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                sh 'docker push ${IMAGE_NAME}:latest'
+            }
+        }
+
+        stage('Verify Image') {
+            steps {
+                sh 'docker images | grep fundoo-backend'
             }
         }
     }
 
     post {
         success {
-            echo 'Build Successful'
+            echo 'Pipeline completed successfully!'
         }
+
         failure {
-            echo 'Build Failed'
+            echo 'Pipeline failed! Check the console output.'
         }
+
         always {
             cleanWs()
         }
