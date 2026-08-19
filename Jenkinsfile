@@ -4,11 +4,13 @@ pipeline {
     tools {
         jdk 'JDK 21'
         maven 'Maven 3'
+        nodejs 'NodeJS 22'
     }
 
     environment {
-        IMAGE_NAME = "fundoo-backend"
-        IMAGE_TAG  = "latest"
+        BACKEND_IMAGE  = "shanmu12/fundoo-backend"
+        FRONTEND_IMAGE = "shanmu12/fundoo-frontend"
+        TAG = "latest"
     }
 
     stages {
@@ -19,52 +21,95 @@ pipeline {
             }
         }
 
-        stage('Build JAR') {
+        stage('Build Backend') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                dir('Fundoo-Application') {
+                    sh 'mvn clean package -DskipTests'
+                }
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Frontend') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+                dir('Fundoo-Frontend') {
+                    sh 'npm install'
+                    sh 'npm run build'
+                }
             }
         }
 
-        stage('Verify Image') {
+        stage('Docker Build') {
             steps {
-                sh 'docker images'
+                dir('Fundoo-Application') {
+                    sh 'docker build -t $BACKEND_IMAGE:$TAG .'
+                }
+
+                dir('Fundoo-Frontend') {
+                    sh 'docker build -t $FRONTEND_IMAGE:$TAG .'
+                }
             }
         }
 
-        stage('Push to Docker Hub') {
+        stage('Push Images') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'docker-hub',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
+
                     sh '''
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
 
-                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} $DOCKER_USER/${IMAGE_NAME}:${IMAGE_TAG}
-
-                        docker push $DOCKER_USER/${IMAGE_NAME}:${IMAGE_TAG}
+                        docker push $BACKEND_IMAGE:$TAG
+                        docker push $FRONTEND_IMAGE:$TAG
 
                         docker logout
                     '''
                 }
             }
         }
+
+        stage('Deploy on EC2') {
+            steps {
+                sh '''
+                    docker pull $BACKEND_IMAGE:$TAG
+                    docker pull $FRONTEND_IMAGE:$TAG
+
+                    docker stop fundoo-backend || true
+                    docker rm fundoo-backend || true
+
+                    docker stop fundoo-frontend || true
+                    docker rm fundoo-frontend || true
+
+                    docker run -d \
+                      --name fundoo-backend \
+                      --network fundoo-network \
+                      -p 8080:8080 \
+                      -e SPRING_PROFILES_ACTIVE=dev \
+                      --restart unless-stopped \
+                      $BACKEND_IMAGE:$TAG
+
+                    docker run -d \
+                      --name fundoo-frontend \
+                      --network fundoo-network \
+                      -p 80:80 \
+                      --restart unless-stopped \
+                      $FRONTEND_IMAGE:$TAG
+                '''
+            }
+        }
     }
 
     post {
         success {
-            echo 'CI Pipeline Completed Successfully'
+            echo 'Full Stack Deployment Successful'
         }
+
         failure {
-            echo 'CI Pipeline Failed'
+            echo 'Pipeline Failed'
         }
+
         always {
             cleanWs()
         }
