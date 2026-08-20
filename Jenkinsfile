@@ -2,13 +2,12 @@ pipeline {
     agent any
 
     tools {
-        jdk 'JDK 21'
         maven 'Maven 3'
     }
 
     environment {
         JAVA_HOME = "/opt/java/openjdk"
-        PATH = "${JAVA_HOME}/bin:${PATH}"
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
 
         BACKEND_IMAGE = "shanmu12/fundoo-backend"
         TAG = "latest"
@@ -23,13 +22,19 @@ pipeline {
             }
         }
 
-        stage('Build Backend') {
+        stage('Verify Java') {
             steps {
                 sh '''
+                    echo "JAVA_HOME=$JAVA_HOME"
                     java -version
                     mvn -version
-                    mvn clean package -DskipTests
                 '''
+            }
+        }
+
+        stage('Build Backend') {
+            steps {
+                sh 'mvn clean package -DskipTests'
             }
         }
 
@@ -59,18 +64,18 @@ pipeline {
             steps {
                 sshagent(credentials: ['ec2-ssh']) {
                     sh '''
-        ssh -o StrictHostKeyChecking=no ubuntu@$EC2_HOST << 'EOF'
-        cd ~/fundoo
+                        ssh -o StrictHostKeyChecking=no ubuntu@$EC2_HOST << EOF
+                            cd ~/fundoo
 
-        docker compose pull
+                            docker compose pull
 
-        docker compose stop fundoo-backend || true
-        docker compose rm -f fundoo-backend || true
+                            docker compose stop fundoo-backend || true
+                            docker compose rm -f fundoo-backend || true
 
-        docker compose up -d
+                            docker compose up -d
 
-        docker ps
-        EOF
+                            docker ps
+                        EOF
                     '''
                 }
             }
