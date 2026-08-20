@@ -2,11 +2,13 @@ pipeline {
     agent any
 
     tools {
-        jdk 'JDK 21'
         maven 'Maven 3'
     }
 
     environment {
+        JAVA_HOME = "/opt/java/openjdk"
+        PATH = "${JAVA_HOME}/bin:${PATH}"
+
         BACKEND_IMAGE = "shanmu12/fundoo-backend"
         TAG = "latest"
         EC2_HOST = "18.60.209.203"
@@ -22,7 +24,11 @@ pipeline {
 
         stage('Build Backend') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                sh '''
+                    java -version
+                    mvn -version
+                    mvn clean package -DskipTests
+                '''
             }
         }
 
@@ -39,7 +45,6 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-
                     sh '''
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                         docker push $BACKEND_IMAGE:$TAG
@@ -61,7 +66,7 @@ pipeline {
                             docker compose stop fundoo-backend || true
                             docker compose rm -f fundoo-backend || true
 
-                            docker compose up -d
+                            docker compose up -d fundoo-backend
 
                             docker ps
                         EOF
@@ -75,11 +80,9 @@ pipeline {
         success {
             echo 'Backend Deployment Successful'
         }
-
         failure {
             echo 'Pipeline Failed'
         }
-
         always {
             cleanWs()
         }
