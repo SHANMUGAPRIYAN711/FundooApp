@@ -9,6 +9,7 @@ pipeline {
     environment {
         BACKEND_IMAGE = "shanmu12/fundoo-backend"
         TAG = "latest"
+        EC2_HOST = "18.60.209.203"
     }
 
     stages {
@@ -50,20 +51,22 @@ pipeline {
 
         stage('Deploy on EC2') {
             steps {
-                sh '''
-                    docker pull $BACKEND_IMAGE:$TAG
+                sshagent(credentials: ['ec2-ssh']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@$EC2_HOST << 'EOF'
+                            cd ~/fundoo
 
-                    docker stop fundoo-backend || true
-                    docker rm fundoo-backend || true
+                            docker compose pull
 
-                    docker run -d \
-                      --name fundoo-backend \
-                      --network fundoo-network \
-                      -p 8080:8080 \
-                      -e SPRING_PROFILES_ACTIVE=dev \
-                      --restart unless-stopped \
-                      $BACKEND_IMAGE:$TAG
-                '''
+                            docker compose stop fundoo-backend || true
+                            docker compose rm -f fundoo-backend || true
+
+                            docker compose up -d
+
+                            docker ps
+                        EOF
+                    '''
+                }
             }
         }
     }
