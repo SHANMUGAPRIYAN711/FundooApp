@@ -59,18 +59,18 @@ pipeline {
             steps {
                 sshagent(credentials: ['ec2-ssh']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@$EC2_HOST << 'EOF'
-                            cd ~/fundoo
+        ssh -o StrictHostKeyChecking=no ubuntu@$EC2_HOST << 'EOF'
+        cd ~/fundoo
 
-                            docker compose pull
+        docker compose pull
 
-                            docker compose stop fundoo-backend || true
-                            docker compose rm -f fundoo-backend || true
+        docker compose stop fundoo-backend || true
+        docker compose rm -f fundoo-backend || true
 
-                            docker compose up -d fundoo-backend
+        docker compose up -d
 
-                            docker ps
-                        EOF
+        docker ps
+        EOF
                     '''
                 }
             }
