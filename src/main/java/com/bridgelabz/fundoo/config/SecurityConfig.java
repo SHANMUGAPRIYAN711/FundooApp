@@ -45,19 +45,28 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:4200",
                 "http://localhost:3000",
                 "http://localhost:5173",
                 "http://localhost:8080",
-                "http://localhost:8081"
+                "http://localhost:8081",
+                "http://18.60.209.203"   // EC2 Frontend
         ));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+        ));
+
         configuration.setAllowedHeaders(Collections.singletonList("*"));
         configuration.setExposedHeaders(Collections.singletonList("*"));
         configuration.setAllowCredentials(true);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 
