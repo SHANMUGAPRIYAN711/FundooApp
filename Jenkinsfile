@@ -4,12 +4,10 @@ pipeline {
     tools {
         jdk 'JDK 21'
         maven 'Maven 3'
-        nodejs 'NodeJS 22'
     }
 
     environment {
-        BACKEND_IMAGE  = "shanmu12/fundoo-backend"
-        FRONTEND_IMAGE = "shanmu12/fundoo-frontend"
+        BACKEND_IMAGE = "shanmu12/fundoo-backend"
         TAG = "latest"
     }
 
@@ -23,34 +21,17 @@ pipeline {
 
         stage('Build Backend') {
             steps {
-                dir('Fundoo-Application') {
-                    sh 'mvn clean package -DskipTests'
-                }
-            }
-        }
-
-        stage('Build Frontend') {
-            steps {
-                dir('Fundoo-Frontend') {
-                    sh 'npm install'
-                    sh 'npm run build'
-                }
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Docker Build') {
             steps {
-                dir('Fundoo-Application') {
-                    sh 'docker build -t $BACKEND_IMAGE:$TAG .'
-                }
-
-                dir('Fundoo-Frontend') {
-                    sh 'docker build -t $FRONTEND_IMAGE:$TAG .'
-                }
+                sh 'docker build -t $BACKEND_IMAGE:$TAG .'
             }
         }
 
-        stage('Push Images') {
+        stage('Push Image') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'docker-hub',
@@ -60,10 +41,7 @@ pipeline {
 
                     sh '''
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-
                         docker push $BACKEND_IMAGE:$TAG
-                        docker push $FRONTEND_IMAGE:$TAG
-
                         docker logout
                     '''
                 }
@@ -74,13 +52,9 @@ pipeline {
             steps {
                 sh '''
                     docker pull $BACKEND_IMAGE:$TAG
-                    docker pull $FRONTEND_IMAGE:$TAG
 
                     docker stop fundoo-backend || true
                     docker rm fundoo-backend || true
-
-                    docker stop fundoo-frontend || true
-                    docker rm fundoo-frontend || true
 
                     docker run -d \
                       --name fundoo-backend \
@@ -89,13 +63,6 @@ pipeline {
                       -e SPRING_PROFILES_ACTIVE=dev \
                       --restart unless-stopped \
                       $BACKEND_IMAGE:$TAG
-
-                    docker run -d \
-                      --name fundoo-frontend \
-                      --network fundoo-network \
-                      -p 80:80 \
-                      --restart unless-stopped \
-                      $FRONTEND_IMAGE:$TAG
                 '''
             }
         }
@@ -103,7 +70,7 @@ pipeline {
 
     post {
         success {
-            echo 'Full Stack Deployment Successful'
+            echo 'Backend Deployment Successful'
         }
 
         failure {
