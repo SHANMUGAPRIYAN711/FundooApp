@@ -45,32 +45,21 @@ public class SecurityConfig {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allowed Frontend Origins
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:*",
-                "http://127.0.0.1:*",
+        // Use exact origins instead of patterns
+        config.setAllowedOrigins(List.of(
                 "http://18.60.209.203",
-                "http://18.60.209.203:*"
+                "http://localhost:4200"
         ));
 
-        // Allow all required HTTP methods
         config.setAllowedMethods(List.of(
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE",
-                "OPTIONS"
+                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
         ));
 
-        // Allow all headers
         config.setAllowedHeaders(List.of("*"));
-
-        // Expose all headers
         config.setExposedHeaders(List.of("*"));
 
-        // Required when frontend sends Authorization header
-        config.setAllowCredentials(true);
+        // Important
+        config.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
